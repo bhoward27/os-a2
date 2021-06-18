@@ -1,8 +1,5 @@
-// WHAT FOLLOWS IS FROM Dr. Fraser's video on sockets and threads.
-
 #include <stdio.h>
 #include <stdlib.h>
-#include "receiver.h"
 
 /*
     How to get the arguments from the command-line:
@@ -18,18 +15,6 @@
 
 int main() {
     printf("Starting...\n");
-    Receiver_init();
-
-    // Wait for user input.
-    printf("Enter something to kill the receive threads.\n");
-    char x;
-    int res = scanf("%c", &x);
-    if (res < 1) {
-        printf("scanf failed with output = %d\n", res);
-        return 1;
-    }
-
-    Receiver_shutdown();
     printf("Done.\n");
 
     return 0;
