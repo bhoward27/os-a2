@@ -18,12 +18,20 @@ int main(int arg_count, char** args) {
         return -1;
     }
 
-    // TODO: Get from user input. This is crucial, program won't work at all otherwise.
-    short remote_port = 1025;
+    // Expected CLI format:
+    //      s-talk [my port number] [remote machine name] [remote port number]
+    short local_port = (short) atoi(args[1]);
+    char* remote_machine_name = args[2];
+    char* remote_port = args[3];
 
     KeyboardReceiver_init(local_messages, &ok_to_access_local_msgs_mutex);
-    MessageSender_init(local_messages, &ok_to_access_local_msgs_mutex, remote_port);
-    MessageReceiver_init(remote_messages, &ok_to_access_remote_msgs_mutex, remote_port);
+    MessageSender_init(
+        local_messages, 
+        &ok_to_access_local_msgs_mutex, 
+        local_port, remote_machine_name, 
+        remote_port
+    );
+    MessageReceiver_init(remote_messages, &ok_to_access_remote_msgs_mutex, local_port);
     Printer_init(remote_messages, &ok_to_access_remote_msgs_mutex);
 
     KeyboardReceiver_wait_for_shutdown();

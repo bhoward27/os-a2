@@ -11,14 +11,18 @@ static List* local_messages = NULL;
 static pthread_t thread;
 static pthread_mutex_t* ok_to_remove_local_msg_mutex;
 static int socket_descriptor;
-static short remote_port;
+static short local_port;
+static char* remote_machine_name;
+static char* remote_port;
 
 void MessageSender_init(List* local_msgs, pthread_mutex_t* ok_to_access_local_msgs_mutex, 
-                                                                                short rem_port) {
+                            short loc_port, char* rem_name, char* rem_port) {
     printf("Inside MessageSender_init()\n");
     local_messages = local_msgs;
-    remote_port = rem_port;
+    local_port = loc_port;
     ok_to_remove_local_msg_mutex = ok_to_access_local_msgs_mutex;
+    remote_machine_name = rem_name;
+    remote_port = rem_port;
     pthread_create(&thread, NULL, MessageSender_thread, NULL);
 }
 
@@ -31,7 +35,7 @@ void* MessageSender_thread() {
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = htonl(INADDR_ANY);
-    sin.sin_port = htons(remote_port);
+    sin.sin_port = htons(local_port);
 
     // Create the socket.
     socket_descriptor = socket(PF_INET, SOCK_DGRAM, 0);
@@ -39,6 +43,15 @@ void* MessageSender_thread() {
     // Open and bind the socket.
     bind(socket_descriptor, (struct sockaddr*) &sin, sizeof(sin));
 
+    // Set up the remote sockaddr.
+    struct addrinfo* servinfo;
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    getaddrinfo(remote_machine_name, remote_port, &hints, &servinfo);
+    struct sockaddr_in* sin_remote = (struct sockaddr_in*) servinfo->ai_addr;
+    unsigned int sin_len = sizeof(sin_remote);
 
     while (1) {
         void* message = NULL;
@@ -54,14 +67,12 @@ void* MessageSender_thread() {
         pthread_mutex_unlock(ok_to_remove_local_msg_mutex);
         if (!message) continue; // No message so check again.
 
-        struct sockaddr_in sin_something; // TODO: Not sure whether to call this remote or local.
-        unsigned int sin_len = sizeof(sin_something);
         int result = sendto(
             socket_descriptor, 
             message, 
             MSG_MAX_LEN, 
             0, 
-            (struct sockaddr*) &sin_something,
+            (struct sockaddr*) sin_remote,
             sin_len
         );
         if (result == -1) {

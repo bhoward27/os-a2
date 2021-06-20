@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <pthread.h>
+#include <string.h>
 #include "list.h"
 #include "printer.h"
 
@@ -27,8 +28,11 @@ void* Printer_thread() {
         }
         pthread_mutex_unlock(ok_to_remove_remote_msg_mutex);
         if (!message) continue; // No message to print, so check again.
+
         // TODO: Show the user's name / machine name instead of generic 'remote user'.
         printf("Remote user: %s\n", message);
+
+        if (strncmp("!\n", message, 3) == 0) return NULL;
     }
     return NULL;
 }

@@ -12,13 +12,13 @@ static List* remote_messages = NULL;
 static pthread_t thread;
 static pthread_mutex_t* ok_to_add_remote_msg_mutex;
 static int socket_descriptor;
-static short remote_port;
+static short local_port;
 
 void MessageReceiver_init(List* remote_msgs, pthread_mutex_t* ok_to_access_remote_msgs_mutex,
-                                                                                short rem_port) {
+                                                                                short loc_port) {
     printf("Inside MessageReceiver_init()\n");
     remote_messages = remote_msgs;
-    remote_port = rem_port;
+    local_port = loc_port;
     ok_to_add_remote_msg_mutex = ok_to_access_remote_msgs_mutex;
     pthread_create(&thread, NULL, MessageReceiver_thread, NULL);
 }
@@ -32,7 +32,7 @@ void* MessageReceiver_thread() {
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = htonl(INADDR_ANY);
-    sin.sin_port = htons(remote_port);
+    sin.sin_port = htons(local_port);
 
     // Create the socket.
     socket_descriptor = socket(PF_INET, SOCK_DGRAM, 0);
@@ -40,16 +40,16 @@ void* MessageReceiver_thread() {
     // Open and bind the socket.
     bind(socket_descriptor, (struct sockaddr*) &sin, sizeof(sin));
 
+    struct sockaddr_in sin_remote;
+    unsigned int sin_len = sizeof(sin_remote);
     while (1) {
         char message[MSG_MAX_LEN];
-        struct sockaddr_in sin_something; // TODO: Not sure whether to say remote or local.
-        unsigned int sin_len = sizeof(sin_something);
         int result = recvfrom(
             socket_descriptor,
             message,
             MSG_MAX_LEN,
             0,
-            (struct sockaddr*) &sin_something,
+            (struct sockaddr*) &sin_remote,
             &sin_len
         );
         if (result == -1) {
