@@ -7,14 +7,14 @@
 #define MSG_MAX_LEN 512
 
 static pthread_t thread;
-// static pthread_cond_t ok_to_add_local_msg_cond_var = PTHREAD_COND_INITIALIZER;
-static pthread_mutex_t ok_to_add_local_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t* ok_to_add_local_msg_mutex;
 static List* local_messages = NULL;
 
-void KeyboardReceiver_init(List* local_msgs) {
+void KeyboardReceiver_init(List* local_msgs, pthread_mutex_t* ok_to_access_local_msgs_mutex) {
     // We assume here that local_msgs has been verified (i.e., not NULL) before being passed.
     printf("Inside KeyboardReceiver_init()\n");
     local_messages = local_msgs;
+    ok_to_add_local_msg_mutex = ok_to_access_local_msgs_mutex;
     pthread_create(&thread, NULL, KeyboardReceiver_thread, NULL);
 }
 
@@ -30,11 +30,11 @@ void* KeyboardReceiver_thread() {
         if (succeeded) {
             int result = LIST_FAIL;
 
-            pthread_mutex_lock(&ok_to_add_local_msg_mutex);
+            pthread_mutex_lock(ok_to_add_local_msg_mutex);
             {
                 result = List_append(local_messages, (void*) message);
             }
-            pthread_mutex_unlock(&ok_to_add_local_msg_mutex);
+            pthread_mutex_unlock(ok_to_add_local_msg_mutex);
             
             if (result == LIST_FAIL) {
                 // TODO: Handle failure.

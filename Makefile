@@ -6,8 +6,8 @@ all: s-talk
 run: s-talk
 	./s-talk
 
-s-talk: main.o list.o node_manager.o list_manager.o keyboard_receiver.o
-	gcc $(CFLAGS) main.o list.o node_manager.o list_manager.o keyboard_receiver.o -lpthread -o s-talk
+s-talk: main.o list.o node_manager.o list_manager.o keyboard_receiver.o message_sender.o message_receiver.o printer.o
+	gcc $(CFLAGS) main.o list.o node_manager.o list_manager.o keyboard_receiver.o message_sender.o message_receiver.o printer.o -lpthread -o s-talk
 
 main.o: main.c list.h keyboard_receiver.h
 	gcc $(OFLAGS) main.c
@@ -23,6 +23,15 @@ list_manager.o: list_manager.c list_manager.h list.h
 
 keyboard_receiver.o: keyboard_receiver.c keyboard_receiver.h list.h
 	gcc $(OFLAGS) keyboard_receiver.c
+
+message_receiver.o: message_receiver.c message_receiver.h list.h
+	gcc $(OFLAGS) message_receiver.c
+
+message_sender.o: message_sender.c message_sender.h list.h
+	gcc $(OFLAGS) message_sender.c
+
+printer.o: printer.c printer.h list.h
+	gcc $(OFLAGS) printer.c
 
 clean:
 	rm -f *.o *.s *.out s-talk
