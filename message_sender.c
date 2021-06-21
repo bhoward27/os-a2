@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include "sleep.h"
 #include "list.h"
 #include "message_sender.h"
 
@@ -61,6 +62,7 @@ void* MessageSender_thread() {
         int lock_result = pthread_mutex_lock(ok_to_remove_local_msg_mutex);
         {
             printf("In MessageSender's critical section\n");
+            sleep_msec(1000);
             if (lock_result) { // Not sure if should be in critical section but.. better safe than sorry.
                 // TODO: Handle error.
                 fprintf(

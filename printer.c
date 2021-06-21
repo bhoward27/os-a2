@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include "list.h"
+#include "sleep.h"
 #include "printer.h"
 
 #define MSG_MAX_LEN 512 // TODO: Don't repeat yourself.
@@ -29,6 +30,7 @@ void* Printer_thread() {
         int lock_result = pthread_mutex_lock(ok_to_remove_remote_msg_mutex);
         {
             printf("In Printers's critical section\n");
+            sleep_msec(1000);
             if (lock_result) { // Not sure if should be in critical section but.. better safe than sorry.
                 // TODO: Handle error.
                 fprintf(
