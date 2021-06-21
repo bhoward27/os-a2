@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <netdb.h>
 #include <string.h>
+#include <errno.h>
 #include "list.h"
 #include "message_receiver.h"
 
@@ -54,17 +55,41 @@ void* MessageReceiver_thread() {
         );
         if (result == -1) {
             // TODO: Handle error.
+            fprintf(stderr, "Error in MessageReceiver_thread(): recvfrom() = -1.\n");
         }
 
         int res = LIST_FAIL;
-        pthread_mutex_lock(ok_to_add_remote_msg_mutex);
+        printf("Approaching MessageReceiver's critical section...\n");
+        int lock_result = pthread_mutex_lock(ok_to_add_remote_msg_mutex);
         {
+            printf("In MessageReceiver's critical section\n");
+            if (lock_result) { // Not sure if should be in critical section but.. better safe than sorry.
+                // TODO: Handle error.
+                fprintf(
+                    stderr, 
+                    "Error in MessageReceiver_thread(): pthread_mutex_lock = %d.\n", 
+                    lock_result
+                );
+                perror("pthread_mutex_lock");
+            }
             // Add new message to end of the list.
             res = List_append(remote_messages, (void*) message);
         }
-        pthread_mutex_unlock(ok_to_add_remote_msg_mutex);
+        int unlock_result = pthread_mutex_unlock(ok_to_add_remote_msg_mutex);
+        printf("Exited MessageReceiver's critical section\n");
+        if (unlock_result) {
+            // TODO: Handle error.
+            fprintf(
+                stderr, 
+                "Error in MessageReceiver_thread(): pthread_mutex_unlock = %d.\n", 
+                unlock_result
+            );
+            perror("pthread_mutex_unlock");
+        }
+
         if (res == LIST_FAIL) {
             // TODO: Handle error.
+            fprintf(stderr, "Error in MessageReceiver_thread(): List_append() = LIST_FAIL.\n");
         }
     }
     return NULL;

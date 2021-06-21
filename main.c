@@ -32,7 +32,7 @@ int main(int arg_count, char** args) {
         remote_port
     );
     MessageReceiver_init(remote_messages, &ok_to_access_remote_msgs_mutex, local_port);
-    Printer_init(remote_messages, &ok_to_access_remote_msgs_mutex);
+    Printer_init(remote_messages, &ok_to_access_remote_msgs_mutex, remote_machine_name);
 
     KeyboardReceiver_wait_for_shutdown();
     MessageSender_wait_for_shutdown();

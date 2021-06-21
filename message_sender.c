@@ -2,6 +2,7 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include "list.h"
 #include "message_sender.h"
 
@@ -50,21 +51,43 @@ void* MessageSender_thread() {
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
     getaddrinfo(remote_machine_name, remote_port, &hints, &servinfo);
-    struct sockaddr_in* sin_remote = (struct sockaddr_in*) servinfo->ai_addr;
-    unsigned int sin_len = sizeof(sin_remote);
+    struct sockaddr* sin_remote = servinfo->ai_addr;
+    unsigned int sin_len = sizeof(*sin_remote); // Apparently I need sin_len BEFORE calling getaddrinfo... Not sure how to do that.
 
     while (1) {
         void* message = NULL;
         // Get the message to be sent.
-        pthread_mutex_lock(ok_to_remove_local_msg_mutex);
+        printf("Approaching MessageSender's critical section...\n");
+        int lock_result = pthread_mutex_lock(ok_to_remove_local_msg_mutex);
         {
+            printf("In MessageSender's critical section\n");
+            if (lock_result) { // Not sure if should be in critical section but.. better safe than sorry.
+                // TODO: Handle error.
+                fprintf(
+                    stderr, 
+                    "Error in MessageSender_thread(): pthread_mutex_lock = %d.\n", 
+                    lock_result
+                );
+                perror("pthread_mutex_lock");
+            }
             void* first = List_first(local_messages);
             if (first) {
                 //  Extract the first item.
                 message = List_remove(local_messages);
             }
         }
-        pthread_mutex_unlock(ok_to_remove_local_msg_mutex);
+        int unlock_result = pthread_mutex_unlock(ok_to_remove_local_msg_mutex);
+        printf("Exited MessageSender's critical section\n");
+        if (unlock_result) {
+            // TODO: Handle error.
+            fprintf(
+                stderr, 
+                "Error in MessageSender_thread(): pthread_mutex_unlock = %d.\n", 
+                unlock_result
+            );
+            perror("pthread_mutex_unlock");
+        }
+        
         if (!message) continue; // No message so check again.
 
         int result = sendto(
@@ -72,11 +95,13 @@ void* MessageSender_thread() {
             message, 
             MSG_MAX_LEN, 
             0, 
-            (struct sockaddr*) sin_remote,
+            sin_remote,
             sin_len
         );
         if (result == -1) {
             // TODO: Handle error.
+            fprintf(stderr, "Error in MessageSender_thread(): result = -1\n");
+            perror("sendto");
         }
     }
     return NULL;
@@ -84,5 +109,7 @@ void* MessageSender_thread() {
 
 void MessageSender_wait_for_shutdown() {
     printf("Inside MessageSender_wait_for_shutdown()\n");
+    // TODO: Maybe I need a pthread_cancel here? In that case, just call it shutdown (not wait)?
+
     pthread_join(thread, NULL);
 }

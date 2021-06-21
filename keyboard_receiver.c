@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
+#include <errno.h>
 #include "list.h"
 #include "keyboard_receiver.h"
 
@@ -19,25 +20,50 @@ void KeyboardReceiver_init(List* local_msgs, pthread_mutex_t* ok_to_access_local
 }
 
 void* KeyboardReceiver_thread() {
+    // TODO: Somewhere you should print the local user's name, like "Bob: " and then the cursor is 
+    // there for you to type. This may require synchronization.
     printf("Inside KeyboardReceiver_thread()\n");
     while (1) {
         // TODO: Remember to free() these messages at the appropriate time!
         char* message = (char*) malloc(sizeof(char) * MSG_MAX_LEN);
         if (!message) {
             // TODO: Handle error.
+            fprintf(stderr, "Error in KeyboardReceiver_thread(): char* message = malloc() failed.\n");
         }
         char* succeeded = fgets(message, MSG_MAX_LEN, stdin);
         if (succeeded) {
             int result = LIST_FAIL;
 
-            pthread_mutex_lock(ok_to_add_local_msg_mutex);
+            printf("Approaching KeyboardReceiver's critical section...\n");
+            int lock_result = pthread_mutex_lock(ok_to_add_local_msg_mutex);
             {
+                printf("In KeyboardReceiver's critical section\n");
+                if (lock_result) { // Not sure if should be in critical section but.. better safe than sorry.
+                    // TODO: Handle error.
+                    fprintf(
+                        stderr, 
+                        "Error in KeyboardReceiver_thread(): pthread_mutex_lock = %d.\n", 
+                        lock_result
+                    );
+                    perror("pthread_mutex_lock");
+                }
                 result = List_append(local_messages, (void*) message);
             }
-            pthread_mutex_unlock(ok_to_add_local_msg_mutex);
+            int unlock_result = pthread_mutex_unlock(ok_to_add_local_msg_mutex);
+            printf("Exited KeyboardReceiver's critical section\n");
+            if (unlock_result) {
+                // TODO: Handle error.
+                fprintf(
+                    stderr, 
+                    "Error in KeyboardReceiver_thread(): pthread_mutex_unlock = %d.\n", 
+                    unlock_result
+                );
+                perror("pthread_mutex_unlock");
+            }
             
             if (result == LIST_FAIL) {
                 // TODO: Handle failure.
+                fprintf(stderr, "Error in KeyboardReceiver_thread(): List_append() = LIST_FAIL.\n");
             }
 
             // Check for "!", which should end the application for both users.
