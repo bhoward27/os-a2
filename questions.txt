@@ -1,0 +1,47 @@
+Description:
+
+I have four modules, one per thread:
+1) KeyboardReceiver
+2) MessageSender
+3) MessageReceiver
+4) Printer
+
+I'm currently using only mutexes to manage critical sections.
+KeyboardReceiver and MessageSender share a mutex that controls access to the local_messages list.
+MessageReceiver and Printer share the other mutex, which controls access to the remote_messages list.
+
+I put in some calls to printf which indicate when a particular thread is approaching, inside, or has just exited its critical section.
+
+It appeared that only MessageSender and Printer EVER reach their critical section. No messages could be sent.
+
+Then I modified the code, just adding a call to a sleep function for Printer and MessageSender when they reach their critical section. On running it, I found that I could actually successfully send a message to and from terminals, but there is a lot of latency until the message is displayed on the recipient's terminal.
+
+I commented out the calls to sleep() (or even just reduced the sleep time) (and removed some of the printf's), and again, no messagaes could be sent.
+
+-How can I fix this/what might be happening?
+---Use condition variables to block MessageSender and Printer. KeyboardReceiver signals MessageSender after it's added a new message. MessageReceiver signals Printer after it's added a new message.
+
+-Condition variables, signal, wait -- only for special timing/synchronization, right?
+---No. MessageSender and Printer are hogging CPU because they are not being blocked by OS (unlike your Receivers). You must block them with wait(). recvfrom and gets are blocked until they receive input--that's just how those functions operate.
+
+-Is it neccessary to make the threads take turns, like round robin? Hmm... What's the point in threads then if we're doing?
+----No.
+
+-Am I doing the right thing with the joins? Do I need to cancel any threads?
+----See if it works.
+
+-Is ./s-talk okay, or it has to be just s-talk? If s-talk, how do I do that?
+----Yes.
+
+-What kind of error handling is neccessary? (Show some examples in your code.)
+---If it's from a system call, just exit the program immediately. 
+
+-Is the design okay with passing the mutexes as arguments? If not, any suggestions?
+---Yes.
+
+-Do I need to cite Dr. Fraser's videos?
+----Just cite it in the README file.
+
+----When using condition variables, you have to do something with mutexes. If you're not careful you will cause deadlock.
+
+----When exiting program, need to free any resources used on the way out. This includes mutexes and memory. In order to "free" a mutex, you destroy it.

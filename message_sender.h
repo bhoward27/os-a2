@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include "list.h"
 
-void MessageSender_init(List*, pthread_mutex_t*, short, char*, char*);
+void MessageSender_init(List*, pthread_mutex_t*, pthread_cond_t*, short, char*, char*);
 void* MessageSender_thread();
 void MessageSender_wait_for_shutdown();
 

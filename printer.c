@@ -11,13 +11,15 @@
 static List* remote_messages = NULL;
 static pthread_t thread;
 static pthread_mutex_t* ok_to_remove_remote_msg_mutex;
+static pthread_cond_t* ok_to_remove_remote_msg_cond_var;
 static char* machine_name;
 
 void Printer_init(List* remote_msgs, pthread_mutex_t* ok_to_access_remote_msgs_mutex, 
-                                                                            char* mach_name) {
+                        pthread_cond_t* ok_to_access_remote_msgs_cond_var, char* mach_name) {
     printf("Inside Printer_init()\n");
     remote_messages = remote_msgs;
     ok_to_remove_remote_msg_mutex = ok_to_access_remote_msgs_mutex;
+    ok_to_remove_remote_msg_cond_var = ok_to_access_remote_msgs_cond_var;
     machine_name = mach_name;
     pthread_create(&thread, NULL, Printer_thread, NULL);
 }
@@ -26,11 +28,11 @@ void* Printer_thread() {
     printf("Inside Printer_thread()\n");
     while (1) {
         char* message = NULL;
-        printf("Approaching Printer's critical section...\n");
+        // printf("Approaching Printer's critical section...\n");
         int lock_result = pthread_mutex_lock(ok_to_remove_remote_msg_mutex);
         {
-            printf("In Printers's critical section\n");
-            sleep_msec(1000);
+            // printf("In Printers's critical section\n");
+            // sleep_msec(10);
             if (lock_result) { // Not sure if should be in critical section but.. better safe than sorry.
                 // TODO: Handle error.
                 fprintf(
@@ -40,13 +42,14 @@ void* Printer_thread() {
                 );
                 perror("pthread_mutex_lock");
             }
+            pthread_cond_wait(ok_to_remove_remote_msg_cond_var, ok_to_remove_remote_msg_mutex);
             void* first = List_first(remote_messages);
             if (first) {
                 message = (char*) List_remove(remote_messages);
             }
         }
         int unlock_result = pthread_mutex_unlock(ok_to_remove_remote_msg_mutex);
-        printf("Exited Printer's critical section\n");
+        // printf("Exited Printer's critical section\n");
         if (unlock_result) {
             // TODO: Handle error.
             fprintf(

@@ -12,17 +12,23 @@
 static List* local_messages = NULL;
 static pthread_t thread;
 static pthread_mutex_t* ok_to_remove_local_msg_mutex;
+static pthread_cond_t* ok_to_remove_local_msg_cond_var;
 static int socket_descriptor;
 static short local_port;
 static char* remote_machine_name;
 static char* remote_port;
 
+// TODO: Might want to pass a struct in instead, since now all threads require to be initalized with
+// List*, pthread_mutex_t*, and pthread_cond_t*
+// If change this, should apply to all modules.
 void MessageSender_init(List* local_msgs, pthread_mutex_t* ok_to_access_local_msgs_mutex, 
+                            pthread_cond_t* ok_to_access_local_msgs_cond_var, 
                             short loc_port, char* rem_name, char* rem_port) {
     printf("Inside MessageSender_init()\n");
     local_messages = local_msgs;
     local_port = loc_port;
     ok_to_remove_local_msg_mutex = ok_to_access_local_msgs_mutex;
+    ok_to_remove_local_msg_cond_var = ok_to_access_local_msgs_cond_var;
     remote_machine_name = rem_name;
     remote_port = rem_port;
     pthread_create(&thread, NULL, MessageSender_thread, NULL);
@@ -58,11 +64,11 @@ void* MessageSender_thread() {
     while (1) {
         void* message = NULL;
         // Get the message to be sent.
-        printf("Approaching MessageSender's critical section...\n");
+        // printf("Approaching MessageSender's critical section...\n");
         int lock_result = pthread_mutex_lock(ok_to_remove_local_msg_mutex);
         {
-            printf("In MessageSender's critical section\n");
-            sleep_msec(1000);
+            // printf("In MessageSender's critical section\n");
+            // sleep_msec(10);
             if (lock_result) { // Not sure if should be in critical section but.. better safe than sorry.
                 // TODO: Handle error.
                 fprintf(
@@ -72,6 +78,7 @@ void* MessageSender_thread() {
                 );
                 perror("pthread_mutex_lock");
             }
+            pthread_cond_wait(ok_to_remove_local_msg_cond_var, ok_to_remove_local_msg_mutex);
             void* first = List_first(local_messages);
             if (first) {
                 //  Extract the first item.
@@ -79,7 +86,7 @@ void* MessageSender_thread() {
             }
         }
         int unlock_result = pthread_mutex_unlock(ok_to_remove_local_msg_mutex);
-        printf("Exited MessageSender's critical section\n");
+        // printf("Exited MessageSender's critical section\n");
         if (unlock_result) {
             // TODO: Handle error.
             fprintf(

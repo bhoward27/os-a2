@@ -8,9 +8,15 @@
 #include "printer.h"
 
 int main(int arg_count, char** args) {
+    // TODO: Rename all mutexes and cond_vars to be more descriptive and less verbose.
     pthread_mutex_t ok_to_access_remote_msgs_mutex = PTHREAD_MUTEX_INITIALIZER;
-    pthread_mutex_t ok_to_access_local_msgs_mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t ok_to_access_remote_msgs_cond_var = PTHREAD_COND_INITIALIZER;
 
+    pthread_mutex_t ok_to_access_local_msgs_mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t ok_to_access_local_msgs_cond_var = PTHREAD_COND_INITIALIZER;
+
+
+    // TODO: Rename them to outgoing_messages and incoming_messages.
     List* local_messages = List_create();
     List* remote_messages = List_create();
     if (!local_messages || !remote_messages) {
@@ -24,15 +30,30 @@ int main(int arg_count, char** args) {
     char* remote_machine_name = args[2];
     char* remote_port = args[3];
 
-    KeyboardReceiver_init(local_messages, &ok_to_access_local_msgs_mutex);
+    KeyboardReceiver_init(
+        local_messages, &
+        ok_to_access_local_msgs_mutex, 
+        &ok_to_access_local_msgs_cond_var
+    );
     MessageSender_init(
         local_messages, 
-        &ok_to_access_local_msgs_mutex, 
+        &ok_to_access_local_msgs_mutex,
+        &ok_to_access_local_msgs_cond_var, 
         local_port, remote_machine_name, 
         remote_port
     );
-    MessageReceiver_init(remote_messages, &ok_to_access_remote_msgs_mutex, local_port);
-    Printer_init(remote_messages, &ok_to_access_remote_msgs_mutex, remote_machine_name);
+    MessageReceiver_init(
+        remote_messages, 
+        &ok_to_access_remote_msgs_mutex, 
+        &ok_to_access_remote_msgs_cond_var, 
+        local_port
+    );
+    Printer_init(
+        remote_messages, 
+        &ok_to_access_remote_msgs_mutex,
+        &ok_to_access_remote_msgs_cond_var, 
+        remote_machine_name
+    );
 
     KeyboardReceiver_wait_for_shutdown();
     MessageSender_wait_for_shutdown();

@@ -12,15 +12,17 @@
 static List* remote_messages = NULL;
 static pthread_t thread;
 static pthread_mutex_t* ok_to_add_remote_msg_mutex;
+static pthread_cond_t* ok_to_add_remote_msg_cond_var;
 static int socket_descriptor;
 static short local_port;
 
 void MessageReceiver_init(List* remote_msgs, pthread_mutex_t* ok_to_access_remote_msgs_mutex,
-                                                                                short loc_port) {
+                                pthread_cond_t* ok_to_access_remote_msgs_cond_var, short loc_port) {
     printf("Inside MessageReceiver_init()\n");
     remote_messages = remote_msgs;
     local_port = loc_port;
     ok_to_add_remote_msg_mutex = ok_to_access_remote_msgs_mutex;
+    ok_to_add_remote_msg_cond_var = ok_to_access_remote_msgs_cond_var;
     pthread_create(&thread, NULL, MessageReceiver_thread, NULL);
 }
 
@@ -59,10 +61,10 @@ void* MessageReceiver_thread() {
         }
 
         int res = LIST_FAIL;
-        printf("Approaching MessageReceiver's critical section...\n");
+        // printf("Approaching MessageReceiver's critical section...\n");
         int lock_result = pthread_mutex_lock(ok_to_add_remote_msg_mutex);
         {
-            printf("In MessageReceiver's critical section\n");
+            // printf("In MessageReceiver's critical section\n");
             if (lock_result) { // Not sure if should be in critical section but.. better safe than sorry.
                 // TODO: Handle error.
                 fprintf(
@@ -76,7 +78,7 @@ void* MessageReceiver_thread() {
             res = List_append(remote_messages, (void*) message);
         }
         int unlock_result = pthread_mutex_unlock(ok_to_add_remote_msg_mutex);
-        printf("Exited MessageReceiver's critical section\n");
+        // printf("Exited MessageReceiver's critical section\n");
         if (unlock_result) {
             // TODO: Handle error.
             fprintf(
@@ -91,6 +93,11 @@ void* MessageReceiver_thread() {
             // TODO: Handle error.
             fprintf(stderr, "Error in MessageReceiver_thread(): List_append() = LIST_FAIL.\n");
         }
+        pthread_mutex_lock(ok_to_add_remote_msg_mutex);
+        {
+            pthread_cond_signal(ok_to_add_remote_msg_cond_var);
+        }
+        pthread_mutex_unlock(ok_to_add_remote_msg_mutex);
     }
     return NULL;
 }
