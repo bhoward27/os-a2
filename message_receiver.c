@@ -23,19 +23,8 @@ void MessageReceiver_init(Message_bundle* incoming_bundle) {
 void* MessageReceiver_thread() {
     printf("Inside MessageReceiver_thread()\n");
 
-    // Set up the socket.
-    // Address structure.
     struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = htonl(INADDR_ANY);
-    sin.sin_port = htons(incoming->local_port);
-
-    // Create the socket.
-    socket_descriptor = socket(PF_INET, SOCK_DGRAM, 0);
-
-    // Open and bind the socket.
-    bind(socket_descriptor, (struct sockaddr*) &sin, sizeof(sin));
+    socket_descriptor = config_socket(&sin, incoming->local_port);
 
     struct sockaddr_in sin_remote;
     unsigned int sin_len = sizeof(sin_remote);

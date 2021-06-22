@@ -14,9 +14,6 @@ static Message_bundle* outgoing;
 static int socket_descriptor;
 static char* thread_name = "MessageSender_thread";
 
-// TODO: Might want to pass a struct in instead, since now all threads require to be initalized with
-// List*, pthread_mutex_t*, and pthread_cond_t*
-// If change this, should apply to all modules.
 void MessageSender_init(Message_bundle* outgoing_bundle) {
     printf("Inside MessageSender_init()\n");
     outgoing = outgoing_bundle;
@@ -26,19 +23,8 @@ void MessageSender_init(Message_bundle* outgoing_bundle) {
 void* MessageSender_thread() {
     printf("Inside MessageSender_thread()\n");
 
-    // Set up the socket.
-    // Address structure.
     struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = htonl(INADDR_ANY);
-    sin.sin_port = htons(outgoing->local_port);
-
-    // Create the socket.
-    socket_descriptor = socket(PF_INET, SOCK_DGRAM, 0);
-    
-    // Open and bind the socket.
-    bind(socket_descriptor, (struct sockaddr*) &sin, sizeof(sin));
+    socket_descriptor = config_socket(&sin, outgoing->local_port);
 
     // Set up the remote sockaddr.
     struct addrinfo* servinfo;
