@@ -3,34 +3,22 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 #include "sleep.h"
 #include "list.h"
+#include "message_bundle.h"
 #include "message_sender.h"
 
-#define MSG_MAX_LEN 512 // TODO: Don't repeat yourself.
-
-static List* local_messages = NULL;
 static pthread_t thread;
-static pthread_mutex_t* ok_to_remove_local_msg_mutex;
-static pthread_cond_t* ok_to_remove_local_msg_cond_var;
+static Message_bundle* outgoing;
 static int socket_descriptor;
-static short local_port;
-static char* remote_machine_name;
-static char* remote_port;
 
 // TODO: Might want to pass a struct in instead, since now all threads require to be initalized with
 // List*, pthread_mutex_t*, and pthread_cond_t*
 // If change this, should apply to all modules.
-void MessageSender_init(List* local_msgs, pthread_mutex_t* ok_to_access_local_msgs_mutex, 
-                            pthread_cond_t* ok_to_access_local_msgs_cond_var, 
-                            short loc_port, char* rem_name, char* rem_port) {
+void MessageSender_init(Message_bundle* outgoing_bundle) {
     printf("Inside MessageSender_init()\n");
-    local_messages = local_msgs;
-    local_port = loc_port;
-    ok_to_remove_local_msg_mutex = ok_to_access_local_msgs_mutex;
-    ok_to_remove_local_msg_cond_var = ok_to_access_local_msgs_cond_var;
-    remote_machine_name = rem_name;
-    remote_port = rem_port;
+    outgoing = outgoing_bundle;
     pthread_create(&thread, NULL, MessageSender_thread, NULL);
 }
 
@@ -43,7 +31,7 @@ void* MessageSender_thread() {
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = htonl(INADDR_ANY);
-    sin.sin_port = htons(local_port);
+    sin.sin_port = htons(outgoing->local_port);
 
     // Create the socket.
     socket_descriptor = socket(PF_INET, SOCK_DGRAM, 0);
@@ -57,44 +45,44 @@ void* MessageSender_thread() {
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
-    getaddrinfo(remote_machine_name, remote_port, &hints, &servinfo);
+    getaddrinfo(outgoing->remote_name, outgoing->remote_port, &hints, &servinfo);
     struct sockaddr* sin_remote = servinfo->ai_addr;
     unsigned int sin_len = sizeof(*sin_remote); // Apparently I need sin_len BEFORE calling getaddrinfo... Not sure how to do that.
 
+    pthread_mutex_t* mutex = outgoing->mutex;
+    pthread_cond_t* cond_var = outgoing->cond_var;
+    List* outgoing_messages = outgoing->messages;
     while (1) {
         void* message = NULL;
         // Get the message to be sent.
         // printf("Approaching MessageSender's critical section...\n");
-        int lock_result = pthread_mutex_lock(ok_to_remove_local_msg_mutex);
+        int lock_result = pthread_mutex_lock(mutex);
         {
             // printf("In MessageSender's critical section\n");
             // sleep_msec(10);
-            if (lock_result) { // Not sure if should be in critical section but.. better safe than sorry.
-                // TODO: Handle error.
+            if (lock_result) {
                 fprintf(
                     stderr, 
                     "Error in MessageSender_thread(): pthread_mutex_lock = %d.\n", 
                     lock_result
                 );
                 perror("pthread_mutex_lock");
+                exit(EXIT_FAILURE);
             }
-            pthread_cond_wait(ok_to_remove_local_msg_cond_var, ok_to_remove_local_msg_mutex);
-            void* first = List_first(local_messages);
-            if (first) {
-                //  Extract the first item.
-                message = List_remove(local_messages);
-            }
+            pthread_cond_wait(cond_var, mutex);
+            void* first = List_first(outgoing_messages);
+            if (first) message = List_remove(outgoing_messages);
         }
-        int unlock_result = pthread_mutex_unlock(ok_to_remove_local_msg_mutex);
+        int unlock_result = pthread_mutex_unlock(mutex);
         // printf("Exited MessageSender's critical section\n");
         if (unlock_result) {
-            // TODO: Handle error.
             fprintf(
                 stderr, 
                 "Error in MessageSender_thread(): pthread_mutex_unlock = %d.\n", 
                 unlock_result
             );
             perror("pthread_mutex_unlock");
+            exit(EXIT_FAILURE);
         }
         
         if (!message) continue; // No message so check again.
@@ -107,10 +95,11 @@ void* MessageSender_thread() {
             sin_remote,
             sin_len
         );
+        printf("Message sent.\n");
         if (result == -1) {
-            // TODO: Handle error.
             fprintf(stderr, "Error in MessageSender_thread(): result = -1\n");
             perror("sendto");
+            exit(EXIT_FAILURE);
         }
     }
     return NULL;

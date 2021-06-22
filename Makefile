@@ -9,7 +9,7 @@ run: s-talk
 s-talk: main.o list.o node_manager.o list_manager.o keyboard_receiver.o message_sender.o message_receiver.o printer.o sleep.o
 	gcc $(CFLAGS) main.o list.o node_manager.o list_manager.o keyboard_receiver.o message_sender.o message_receiver.o printer.o sleep.o -lpthread -o s-talk
 
-main.o: main.c list.h keyboard_receiver.h
+main.o: main.c list.h keyboard_receiver.h message_bundle.h
 	gcc $(OFLAGS) main.c
 
 list.o: list.c list.h node_manager.h list_manager.h
@@ -21,16 +21,16 @@ node_manager.o: node_manager.c node_manager.h list.h
 list_manager.o: list_manager.c list_manager.h list.h
 	gcc $(OFLAGS) list_manager.c
 
-keyboard_receiver.o: keyboard_receiver.c keyboard_receiver.h list.h
+keyboard_receiver.o: keyboard_receiver.c keyboard_receiver.h list.h message_bundle.h
 	gcc $(OFLAGS) keyboard_receiver.c
 
-message_receiver.o: message_receiver.c message_receiver.h list.h
+message_receiver.o: message_receiver.c message_receiver.h list.h message_bundle.h
 	gcc $(OFLAGS) message_receiver.c
 
-message_sender.o: message_sender.c message_sender.h list.h
+message_sender.o: message_sender.c message_sender.h list.h message_bundle.h
 	gcc $(OFLAGS) message_sender.c
 
-printer.o: printer.c printer.h list.h
+printer.o: printer.c printer.h list.h message_bundle.h
 	gcc $(OFLAGS) printer.c
 
 sleep.o: sleep.c sleep.h

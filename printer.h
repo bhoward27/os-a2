@@ -3,8 +3,9 @@
 
 #include <pthread.h>
 #include "list.h"
+#include "message_bundle.h"
 
-void Printer_init(List*, pthread_mutex_t*, pthread_cond_t*, char*);
+void Printer_init(Message_bundle*);
 void* Printer_thread();
 void Printer_wait_for_shutdown();
 

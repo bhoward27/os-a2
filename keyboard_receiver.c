@@ -2,27 +2,24 @@
 #include <pthread.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 #include "list.h"
+#include "message_bundle.h"
 #include "keyboard_receiver.h"
 
-#define MSG_MAX_LEN 512
-
 static pthread_t thread;
-static pthread_mutex_t* ok_to_add_local_msg_mutex;
-static pthread_cond_t* ok_to_add_local_msg_cond_var; // TODO: Rename.
-static List* local_messages = NULL;
+static Message_bundle* outgoing = NULL;
 
-void KeyboardReceiver_init(List* local_msgs, pthread_mutex_t* ok_to_access_local_msgs_mutex, 
-                            pthread_cond_t* ok_to_access_local_msgs_cond_var) {
-    // We assume here that local_msgs has been verified (i.e., not NULL) before being passed.
+void KeyboardReceiver_init(Message_bundle* outgoing_bundle) {
     printf("Inside KeyboardReceiver_init()\n");
-    local_messages = local_msgs;
-    ok_to_add_local_msg_mutex = ok_to_access_local_msgs_mutex;
-    ok_to_add_local_msg_cond_var = ok_to_access_local_msgs_cond_var;
+    outgoing = outgoing_bundle;
     pthread_create(&thread, NULL, KeyboardReceiver_thread, NULL);
 }
 
 void* KeyboardReceiver_thread() {
+    pthread_mutex_t* mutex = outgoing->mutex;
+    pthread_cond_t* cond_var = outgoing->cond_var;
+    List* outgoing_messages = outgoing->messages;
     // TODO: Somewhere you should print the local user's name, like "Bob: " and then the cursor is 
     // there for you to type. This may require synchronization.
     // printf("Inside KeyboardReceiver_thread()\n");
@@ -30,54 +27,46 @@ void* KeyboardReceiver_thread() {
         // TODO: Remember to free() these messages at the appropriate time!
         char* message = (char*) malloc(sizeof(char) * MSG_MAX_LEN);
         if (!message) {
-            // TODO: Handle error.
             fprintf(stderr, "Error in KeyboardReceiver_thread(): char* message = malloc() failed.\n");
+            perror("malloc");
+            exit(EXIT_FAILURE);
         }
+        // printf("Awaiting input...\n");
         char* succeeded = fgets(message, MSG_MAX_LEN, stdin);
         if (succeeded) {
             int result = LIST_FAIL;
 
             // printf("Approaching KeyboardReceiver's critical section...\n");
-            int lock_result = pthread_mutex_lock(ok_to_add_local_msg_mutex);
+            int lock_result = pthread_mutex_lock(mutex);
             {
                 // printf("In KeyboardReceiver's critical section\n");
-                if (lock_result) { // Not sure if should be in critical section but.. better safe than sorry.
-                    // TODO: Handle error.
+                if (lock_result) {
                     fprintf(
                         stderr, 
                         "Error in KeyboardReceiver_thread(): pthread_mutex_lock = %d.\n", 
                         lock_result
                     );
                     perror("pthread_mutex_lock");
+                    exit(EXIT_FAILURE);
                 }
-                result = List_append(local_messages, (void*) message);
+                result = List_append(outgoing_messages, (void*) message);
+                if (result == LIST_FAIL) {
+                    fprintf(stderr, "Error in KeyboardReceiver_thread(): List_append() = LIST_FAIL.\n");
+                }
+                else pthread_cond_signal(cond_var);
             }
-            int unlock_result = pthread_mutex_unlock(ok_to_add_local_msg_mutex);
+            int unlock_result = pthread_mutex_unlock(mutex);
             // printf("Exited KeyboardReceiver's critical section\n");
             if (unlock_result) {
-                // TODO: Handle error.
                 fprintf(
                     stderr, 
                     "Error in KeyboardReceiver_thread(): pthread_mutex_unlock = %d.\n", 
                     unlock_result
                 );
                 perror("pthread_mutex_unlock");
+                exit(EXIT_FAILURE);
             }
-            
-            if (result == LIST_FAIL) {
-                // TODO: Handle failure.
-                fprintf(stderr, "Error in KeyboardReceiver_thread(): List_append() = LIST_FAIL.\n");
-            }
-
-            pthread_mutex_lock(ok_to_add_local_msg_mutex);
-            {
-                // Signal MessageSender that a new message is available in local_messages.
-                pthread_cond_signal(ok_to_add_local_msg_cond_var);
-            }
-            pthread_mutex_unlock(ok_to_add_local_msg_mutex);
-
-            // Check for "!", which should end the application for both users.
-            // The below line merely exits this thread.
+          
             if (strncmp("!\n", message, 3) == 0) return NULL;
         }
         else {

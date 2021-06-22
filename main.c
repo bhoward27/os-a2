@@ -2,58 +2,43 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "list.h"
+#include "message_bundle.h"
 #include "keyboard_receiver.h"
 #include "message_sender.h"
 #include "message_receiver.h"
 #include "printer.h"
 
 int main(int arg_count, char** args) {
-    // TODO: Rename all mutexes and cond_vars to be more descriptive and less verbose.
-    pthread_mutex_t ok_to_access_remote_msgs_mutex = PTHREAD_MUTEX_INITIALIZER;
-    pthread_cond_t ok_to_access_remote_msgs_cond_var = PTHREAD_COND_INITIALIZER;
+    Message_bundle incoming;
+    Message_bundle outgoing;
 
-    pthread_mutex_t ok_to_access_local_msgs_mutex = PTHREAD_MUTEX_INITIALIZER;
-    pthread_cond_t ok_to_access_local_msgs_cond_var = PTHREAD_COND_INITIALIZER;
-
-
-    // TODO: Rename them to outgoing_messages and incoming_messages.
-    List* local_messages = List_create();
-    List* remote_messages = List_create();
-    if (!local_messages || !remote_messages) {
+    incoming.messages = List_create();
+    outgoing.messages = List_create();
+    if (!(outgoing.messages) || !(incoming.messages)) {
         printf("List_create() failed. Exiting program...\n");
         return -1;
     }
-
+    // TODO: Verify CLI conforms to the format and is reasonable (Do I NEED to verify it?)
     // Expected CLI format:
     //      s-talk [my port number] [remote machine name] [remote port number]
-    short local_port = (short) atoi(args[1]);
-    char* remote_machine_name = args[2];
-    char* remote_port = args[3];
+    incoming.local_port = outgoing.local_port = (short) atoi(args[1]);
+    incoming.remote_name = outgoing.remote_name = args[2];
+    incoming.remote_port = outgoing.remote_port = args[3];
+    // TODO: Get local machine name. Not strictly necessary, but would be nice.
 
-    KeyboardReceiver_init(
-        local_messages, &
-        ok_to_access_local_msgs_mutex, 
-        &ok_to_access_local_msgs_cond_var
-    );
-    MessageSender_init(
-        local_messages, 
-        &ok_to_access_local_msgs_mutex,
-        &ok_to_access_local_msgs_cond_var, 
-        local_port, remote_machine_name, 
-        remote_port
-    );
-    MessageReceiver_init(
-        remote_messages, 
-        &ok_to_access_remote_msgs_mutex, 
-        &ok_to_access_remote_msgs_cond_var, 
-        local_port
-    );
-    Printer_init(
-        remote_messages, 
-        &ok_to_access_remote_msgs_mutex,
-        &ok_to_access_remote_msgs_cond_var, 
-        remote_machine_name
-    );
+    pthread_mutex_t incoming_mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t incoming_cond_var = PTHREAD_COND_INITIALIZER;
+    pthread_mutex_t outgoing_mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t outgoing_cond_var = PTHREAD_COND_INITIALIZER;
+    incoming.mutex = &incoming_mutex;
+    incoming.cond_var = &incoming_cond_var;
+    outgoing.mutex = &outgoing_mutex;
+    outgoing.cond_var = &outgoing_cond_var;
+
+    KeyboardReceiver_init(&outgoing);
+    MessageSender_init(&outgoing);
+    MessageReceiver_init(&incoming);
+    Printer_init(&incoming);
 
     KeyboardReceiver_wait_for_shutdown();
     MessageSender_wait_for_shutdown();

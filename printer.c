@@ -2,67 +2,69 @@
 #include <pthread.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 #include "list.h"
-#include "sleep.h"
+#include "sleep.h" // TODO: Remove when no longer neccessary.
+#include "message_bundle.h"
 #include "printer.h"
 
-#define MSG_MAX_LEN 512 // TODO: Don't repeat yourself.
-
-static List* remote_messages = NULL;
 static pthread_t thread;
-static pthread_mutex_t* ok_to_remove_remote_msg_mutex;
-static pthread_cond_t* ok_to_remove_remote_msg_cond_var;
-static char* machine_name;
+static Message_bundle* incoming;
 
-void Printer_init(List* remote_msgs, pthread_mutex_t* ok_to_access_remote_msgs_mutex, 
-                        pthread_cond_t* ok_to_access_remote_msgs_cond_var, char* mach_name) {
+void Printer_init(Message_bundle* incoming_bundle) {
     printf("Inside Printer_init()\n");
-    remote_messages = remote_msgs;
-    ok_to_remove_remote_msg_mutex = ok_to_access_remote_msgs_mutex;
-    ok_to_remove_remote_msg_cond_var = ok_to_access_remote_msgs_cond_var;
-    machine_name = mach_name;
+    incoming = incoming_bundle;
     pthread_create(&thread, NULL, Printer_thread, NULL);
 }
 
 void* Printer_thread() {
     printf("Inside Printer_thread()\n");
+
+    pthread_mutex_t* mutex = incoming->mutex;
+    pthread_cond_t* cond_var = incoming->cond_var;
+    List* incoming_messages = incoming->messages;
+    char* remote_name = incoming->remote_name;
     while (1) {
         char* message = NULL;
         // printf("Approaching Printer's critical section...\n");
-        int lock_result = pthread_mutex_lock(ok_to_remove_remote_msg_mutex);
+        int lock_result = pthread_mutex_lock(mutex);
         {
             // printf("In Printers's critical section\n");
             // sleep_msec(10);
-            if (lock_result) { // Not sure if should be in critical section but.. better safe than sorry.
-                // TODO: Handle error.
+            if (lock_result) {
                 fprintf(
                     stderr, 
                     "Error in Printer_thread(): pthread_mutex_lock = %d.\n", 
                     lock_result
                 );
                 perror("pthread_mutex_lock");
+                exit(EXIT_FAILURE);
             }
-            pthread_cond_wait(ok_to_remove_remote_msg_cond_var, ok_to_remove_remote_msg_mutex);
-            void* first = List_first(remote_messages);
+            printf("Printer_thread(): Waiting...\n");
+            pthread_cond_wait(cond_var, mutex);
+            printf("Printer_thread(): Done waiting.\n");
+            void* first = List_first(incoming_messages);
             if (first) {
-                message = (char*) List_remove(remote_messages);
+                message = (char*) List_remove(incoming_messages);
             }
         }
-        int unlock_result = pthread_mutex_unlock(ok_to_remove_remote_msg_mutex);
+        int unlock_result = pthread_mutex_unlock(mutex);
         // printf("Exited Printer's critical section\n");
         if (unlock_result) {
-            // TODO: Handle error.
             fprintf(
                 stderr, 
                 "Error in Printer_thread(): pthread_mutex_unlock = %d.\n", 
                 unlock_result
             );
             perror("pthread_mutex_unlock");
+            exit(EXIT_FAILURE);
         }
 
-        if (!message) continue; // No message to print, so check again.
-
-        printf("%s: %s\n\n", machine_name, message);
+        if (!message) {
+            printf("message is null.\n");
+            continue; // No message to print, so check again.
+        }
+        printf("%s: %s\n\n", remote_name, message);
 
         if (strncmp("!\n", message, 3) == 0) return NULL;
     }

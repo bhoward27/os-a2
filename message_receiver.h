@@ -3,8 +3,9 @@
 
 #include <pthread.h>
 #include "list.h"
+#include "message_bundle.h"
 
-void MessageReceiver_init(List*, pthread_mutex_t*, pthread_cond_t*, short);
+void MessageReceiver_init(Message_bundle*);
 void* MessageReceiver_thread();
 void MessageReceiver_wait_for_shutdown();
 
