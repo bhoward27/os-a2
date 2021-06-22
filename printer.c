@@ -4,12 +4,13 @@
 #include <errno.h>
 #include <stdlib.h>
 #include "list.h"
-#include "sleep.h" // TODO: Remove when no longer neccessary.
+#include "utils.h"
 #include "message_bundle.h"
 #include "printer.h"
 
 static pthread_t thread;
 static Message_bundle* incoming;
+static char* thread_name = "Printer_thread";
 
 void Printer_init(Message_bundle* incoming_bundle) {
     printf("Inside Printer_init()\n");
@@ -32,13 +33,7 @@ void* Printer_thread() {
             // printf("In Printers's critical section\n");
             // sleep_msec(10);
             if (lock_result) {
-                fprintf(
-                    stderr, 
-                    "Error in Printer_thread(): pthread_mutex_lock = %d.\n", 
-                    lock_result
-                );
-                perror("pthread_mutex_lock");
-                exit(EXIT_FAILURE);
+                err(thread_name, "pthread_mutex_lock", lock_result);
             }
             printf("Printer_thread(): Waiting...\n");
             pthread_cond_wait(cond_var, mutex);
@@ -51,13 +46,7 @@ void* Printer_thread() {
         int unlock_result = pthread_mutex_unlock(mutex);
         // printf("Exited Printer's critical section\n");
         if (unlock_result) {
-            fprintf(
-                stderr, 
-                "Error in Printer_thread(): pthread_mutex_unlock = %d.\n", 
-                unlock_result
-            );
-            perror("pthread_mutex_unlock");
-            exit(EXIT_FAILURE);
+            err(thread_name, "pthread_mutex_unlock", unlock_result);
         }
 
         if (!message) {

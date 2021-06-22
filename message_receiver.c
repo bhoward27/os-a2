@@ -6,11 +6,13 @@
 #include <stdlib.h>
 #include "list.h"
 #include "message_bundle.h"
+#include "utils.h"
 #include "message_receiver.h"
 
 static pthread_t thread;
 static Message_bundle* incoming;
 static int socket_descriptor;
+static char* thread_name = "MessageReceiver_thread";
 
 void MessageReceiver_init(Message_bundle* incoming_bundle) {
     printf("Inside MessageReceiver_init()\n");
@@ -54,9 +56,7 @@ void* MessageReceiver_thread() {
         );
         printf("Message received.\n");
         if (result == -1) {
-            fprintf(stderr, "Error in MessageReceiver_thread(): recvfrom() = -1.\n");
-            perror("recvfrom");
-            exit(EXIT_FAILURE);
+            err(thread_name, "recvfrom", result);
         }
 
         int res = LIST_FAIL;
@@ -65,13 +65,7 @@ void* MessageReceiver_thread() {
         {
             // printf("In MessageReceiver's critical section\n");
             if (lock_result) {
-                fprintf(
-                    stderr, 
-                    "Error in MessageReceiver_thread(): pthread_mutex_lock = %d.\n", 
-                    lock_result
-                );
-                perror("pthread_mutex_lock");
-                exit(EXIT_FAILURE);
+                err(thread_name, "pthread_mutex_lock", lock_result);
             }
             // Add new message to end of the list.
             res = List_append(incoming_messages, (void*) message);
@@ -87,13 +81,7 @@ void* MessageReceiver_thread() {
         int unlock_result = pthread_mutex_unlock(mutex);
         // printf("Exited MessageReceiver's critical section\n");
         if (unlock_result) {
-            fprintf(
-                stderr, 
-                "Error in MessageReceiver_thread(): pthread_mutex_unlock = %d.\n", 
-                unlock_result
-            );
-            perror("pthread_mutex_unlock");
-            exit(EXIT_FAILURE);
+            err(thread_name, "pthread_mutex_unlock", unlock_result);
         }
     }
     return NULL;

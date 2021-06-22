@@ -4,7 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
-#include "sleep.h"
+#include "utils.h"
 #include "list.h"
 #include "message_bundle.h"
 #include "message_sender.h"
@@ -12,6 +12,7 @@
 static pthread_t thread;
 static Message_bundle* outgoing;
 static int socket_descriptor;
+static char* thread_name = "MessageSender_thread";
 
 // TODO: Might want to pass a struct in instead, since now all threads require to be initalized with
 // List*, pthread_mutex_t*, and pthread_cond_t*
@@ -61,13 +62,7 @@ void* MessageSender_thread() {
             // printf("In MessageSender's critical section\n");
             // sleep_msec(10);
             if (lock_result) {
-                fprintf(
-                    stderr, 
-                    "Error in MessageSender_thread(): pthread_mutex_lock = %d.\n", 
-                    lock_result
-                );
-                perror("pthread_mutex_lock");
-                exit(EXIT_FAILURE);
+                err(thread_name, "pthread_mutex_lock", lock_result);
             }
             pthread_cond_wait(cond_var, mutex);
             void* first = List_first(outgoing_messages);
@@ -76,13 +71,7 @@ void* MessageSender_thread() {
         int unlock_result = pthread_mutex_unlock(mutex);
         // printf("Exited MessageSender's critical section\n");
         if (unlock_result) {
-            fprintf(
-                stderr, 
-                "Error in MessageSender_thread(): pthread_mutex_unlock = %d.\n", 
-                unlock_result
-            );
-            perror("pthread_mutex_unlock");
-            exit(EXIT_FAILURE);
+            err(thread_name, "pthread_mutex_unlock", unlock_result);
         }
         
         if (!message) continue; // No message so check again.
@@ -97,9 +86,7 @@ void* MessageSender_thread() {
         );
         printf("Message sent.\n");
         if (result == -1) {
-            fprintf(stderr, "Error in MessageSender_thread(): result = -1\n");
-            perror("sendto");
-            exit(EXIT_FAILURE);
+            err(thread_name, "sendto", result);
         }
     }
     return NULL;

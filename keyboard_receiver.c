@@ -5,10 +5,12 @@
 #include <stdlib.h>
 #include "list.h"
 #include "message_bundle.h"
+#include "utils.h"
 #include "keyboard_receiver.h"
 
 static pthread_t thread;
 static Message_bundle* outgoing = NULL;
+static char* thread_name = "KeyboardReceiver_thread";
 
 void KeyboardReceiver_init(Message_bundle* outgoing_bundle) {
     printf("Inside KeyboardReceiver_init()\n");
@@ -41,13 +43,7 @@ void* KeyboardReceiver_thread() {
             {
                 // printf("In KeyboardReceiver's critical section\n");
                 if (lock_result) {
-                    fprintf(
-                        stderr, 
-                        "Error in KeyboardReceiver_thread(): pthread_mutex_lock = %d.\n", 
-                        lock_result
-                    );
-                    perror("pthread_mutex_lock");
-                    exit(EXIT_FAILURE);
+                    err(thread_name, "pthread_mutex_lock", lock_result);
                 }
                 result = List_append(outgoing_messages, (void*) message);
                 if (result == LIST_FAIL) {
@@ -58,13 +54,7 @@ void* KeyboardReceiver_thread() {
             int unlock_result = pthread_mutex_unlock(mutex);
             // printf("Exited KeyboardReceiver's critical section\n");
             if (unlock_result) {
-                fprintf(
-                    stderr, 
-                    "Error in KeyboardReceiver_thread(): pthread_mutex_unlock = %d.\n", 
-                    unlock_result
-                );
-                perror("pthread_mutex_unlock");
-                exit(EXIT_FAILURE);
+                err(thread_name, "pthread_mutex_unlock", unlock_result);
             }
           
             if (strncmp("!\n", message, 3) == 0) return NULL;
