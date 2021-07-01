@@ -15,7 +15,8 @@ static char* thread_name = "Printer_thread";
 void Printer_init(Message_bundle* incoming_bundle) {
     printf("Inside Printer_init()\n");
     incoming = incoming_bundle;
-    pthread_create(&thread, NULL, Printer_thread, NULL);
+    int result = pthread_create(&thread, NULL, Printer_thread, NULL);
+    if (result) err(thread_name, "pthread_create", result);
 }
 
 void* Printer_thread() {
@@ -36,7 +37,8 @@ void* Printer_thread() {
                 err(thread_name, "pthread_mutex_lock", lock_result);
             }
             printf("Printer_thread(): Waiting...\n");
-            pthread_cond_wait(cond_var, mutex);
+            int wait_result = pthread_cond_wait(cond_var, mutex);
+            if (wait_result) err(thread_name, "pthread_cond_wait", wait_result);
             printf("Printer_thread(): Done waiting.\n");
             void* first = List_first(incoming_messages);
             if (first) {
@@ -62,5 +64,6 @@ void* Printer_thread() {
 
 void Printer_wait_for_shutdown() {
     printf("Inside Printer_wait_for_shutdown()\n");
-    pthread_join(thread, NULL);
+    int result = pthread_join(thread, NULL);
+    if (result) err(thread_name, "pthread_join", result);
 }

@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "keyboard_receiver.h"
 
+// TODO: Make these const.
 static pthread_t thread;
 static Message_bundle* outgoing = NULL;
 static char* thread_name = "KeyboardReceiver_thread";
@@ -15,7 +16,8 @@ static char* thread_name = "KeyboardReceiver_thread";
 void KeyboardReceiver_init(Message_bundle* outgoing_bundle) {
     printf("Inside KeyboardReceiver_init()\n");
     outgoing = outgoing_bundle;
-    pthread_create(&thread, NULL, KeyboardReceiver_thread, NULL);
+    int result = pthread_create(&thread, NULL, KeyboardReceiver_thread, NULL);
+    if (result) err(thread_name, "pthread_create", result);
 }
 
 void* KeyboardReceiver_thread() {
@@ -42,14 +44,18 @@ void* KeyboardReceiver_thread() {
             int lock_result = pthread_mutex_lock(mutex);
             {
                 // printf("In KeyboardReceiver's critical section\n");
-                if (lock_result) {
-                    err(thread_name, "pthread_mutex_lock", lock_result);
-                }
+                if (lock_result) err(thread_name, "pthread_mutex_lock", lock_result);
                 result = List_append(outgoing_messages, (void*) message);
                 if (result == LIST_FAIL) {
-                    fprintf(stderr, "Error in KeyboardReceiver_thread(): List_append() = LIST_FAIL.\n");
+                    fprintf(
+                        stderr, 
+                        "Error in KeyboardReceiver_thread(): List_append() = LIST_FAIL.\n"
+                    );
                 }
-                else pthread_cond_signal(cond_var);
+                else {
+                    int signal_result = pthread_cond_signal(cond_var);
+                    if (signal_result) err(thread_name, "pthread_cond_signal", signal_result);
+                }
             }
             int unlock_result = pthread_mutex_unlock(mutex);
             // printf("Exited KeyboardReceiver's critical section\n");
@@ -71,5 +77,6 @@ void KeyboardReceiver_wait_for_shutdown() {
     printf("Inside KeyboardReceiver_wait_for_shutdown()\n");
 
     // Waits for thread to finish.
-    pthread_join(thread, NULL);
+    int result = pthread_join(thread, NULL);
+    if (result) err(thread_name, "pthread_join", result);
 }

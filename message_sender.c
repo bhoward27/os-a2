@@ -17,7 +17,8 @@ static char* thread_name = "MessageSender_thread";
 void MessageSender_init(Message_bundle* outgoing_bundle) {
     printf("Inside MessageSender_init()\n");
     outgoing = outgoing_bundle;
-    pthread_create(&thread, NULL, MessageSender_thread, NULL);
+    int result = pthread_create(&thread, NULL, MessageSender_thread, NULL);
+    if (result) err(thread_name, "pthread_create", result);
 }
 
 void* MessageSender_thread() {
@@ -50,7 +51,8 @@ void* MessageSender_thread() {
             if (lock_result) {
                 err(thread_name, "pthread_mutex_lock", lock_result);
             }
-            pthread_cond_wait(cond_var, mutex);
+            int wait_result = pthread_cond_wait(cond_var, mutex);
+            if (wait_result) err(thread_name, "pthread_cond_wait", wait_result);
             void* first = List_first(outgoing_messages);
             if (first) message = List_remove(outgoing_messages);
         }
@@ -82,5 +84,6 @@ void MessageSender_wait_for_shutdown() {
     printf("Inside MessageSender_wait_for_shutdown()\n");
     // TODO: Maybe I need a pthread_cancel here? In that case, just call it shutdown (not wait)?
 
-    pthread_join(thread, NULL);
+    int result = pthread_join(thread, NULL);
+    if (result) err(thread_name, "pthread_join", result);
 }

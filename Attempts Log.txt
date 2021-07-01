@@ -1,0 +1,29 @@
+This file documents my attempts to solve nasty bugs.
+
+*****UNRECEIVED MESSAGES*****
+Bug Description:
+-It's seemingly random as to whether or not the terminals can communicate with each other. Specifically, the message is never received as recvfrom never completes.
+
+Possible Causes:
+
+Attempt #1:
+What to try:
+Why I'm trying it/what possible cause am I trying to address?:
+
+
+******************************
+
+
+Random
+
+gdb commands:
+-info threads (shows what threads are running)
+-thread [n] (switch to thread n)
+-watch [variable] [condition] (after condition is met, the debugger pauses execution — keep in mind that the numbers you put in a condition are interpreted as hexadecimal)
+-thread apply all backtrace (shows where all the threads are)
+-thread apply all [command]
+
+set breakpoints at relevant spots
+
+
+Perhaps there’s some other shared data / some other race condition in my code that I have not accounted for.

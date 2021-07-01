@@ -17,7 +17,8 @@ static char* thread_name = "MessageReceiver_thread";
 void MessageReceiver_init(Message_bundle* incoming_bundle) {
     printf("Inside MessageReceiver_init()\n");
     incoming = incoming_bundle;
-    pthread_create(&thread, NULL, MessageReceiver_thread, NULL);
+    int result = pthread_create(&thread, NULL, MessageReceiver_thread, NULL);
+    if (result) err(thread_name, "pthread_create", result);
 }
 
 void* MessageReceiver_thread() {
@@ -63,7 +64,8 @@ void* MessageReceiver_thread() {
             }
             else {
                 printf("Trying to signal Printer...\n");
-                pthread_cond_signal(cond_var);
+                int signal_result = pthread_cond_signal(cond_var);
+                if (signal_result) err(thread_name, "pthread_cond_signal", signal_result);
                 printf("Signalled Printer.\n");
             }
         }
@@ -78,5 +80,6 @@ void* MessageReceiver_thread() {
 
 void MessageReceiver_wait_for_shutdown() {
     printf("Inside MessageReceiver_wait_for_shutdown()\n");
-    pthread_join(thread, NULL);
+    int result = pthread_join(thread, NULL);
+    if (result) err(thread_name, "pthread_join", result);
 }
