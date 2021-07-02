@@ -21,12 +21,13 @@ void KeyboardReceiver_init(Message_bundle* outgoing_bundle) {
 }
 
 void* KeyboardReceiver_thread() {
+    print_thread(thread_name);
     pthread_mutex_t* mutex = outgoing->mutex;
     pthread_cond_t* cond_var = outgoing->cond_var;
     List* outgoing_messages = outgoing->messages;
     // TODO: Somewhere you should print the local user's name, like "Bob: " and then the cursor is 
-    // there for you to type. This may require synchronization.
-    // printf("Inside KeyboardReceiver_thread()\n");
+    // there for you to type. This may require synchronization
+
     while (1) {
         // TODO: Remember to free() these messages at the appropriate time!
         char* message = (char*) malloc(sizeof(char) * MSG_MAX_LEN);

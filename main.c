@@ -8,7 +8,12 @@
 #include "message_receiver.h"
 #include "printer.h"
 
-int main(int arg_count, char** args) {
+int main(int argc, char* argv[]) {
+    if (argc < 4) {
+        printf("s-talk requires four command-line arguments.\n"
+            "The format is like so: s-talk [my port number] [remote machine name] [remote port number]\n");
+        return -1;
+    }
     Message_bundle incoming;
     Message_bundle outgoing;
 
@@ -21,9 +26,9 @@ int main(int arg_count, char** args) {
     // TODO: Verify CLI conforms to the format and is reasonable (Do I NEED to verify it?)
     // Expected CLI format:
     //      s-talk [my port number] [remote machine name] [remote port number]
-    incoming.local_port = outgoing.local_port = (short) atoi(args[1]);
-    incoming.remote_name = outgoing.remote_name = args[2];
-    incoming.remote_port = outgoing.remote_port = args[3];
+    incoming.local_port = outgoing.local_port = (short) atoi(argv[1]);
+    incoming.remote_name = outgoing.remote_name = argv[2];
+    incoming.remote_port = outgoing.remote_port = argv[3];
     // TODO: Get local machine name. Not strictly necessary, but would be nice.
 
     pthread_mutex_t incoming_mutex = PTHREAD_MUTEX_INITIALIZER;

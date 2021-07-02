@@ -22,7 +22,7 @@ void MessageSender_init(Message_bundle* outgoing_bundle) {
 }
 
 void* MessageSender_thread() {
-    printf("Inside MessageSender_thread()\n");
+    print_thread(thread_name);
 
     struct sockaddr_in sin;
     socket_descriptor = config_socket(&sin, outgoing->local_port);

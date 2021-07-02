@@ -22,8 +22,7 @@ void MessageReceiver_init(Message_bundle* incoming_bundle) {
 }
 
 void* MessageReceiver_thread() {
-    printf("Inside MessageReceiver_thread()\n");
-
+    print_thread(thread_name);
     struct sockaddr_in sin;
     socket_descriptor = config_socket(&sin, incoming->local_port);
 

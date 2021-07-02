@@ -8,5 +8,6 @@ void sleep_usec(long usec);
 void sleep_msec(long msec);
 void err(char*, char*, int);
 int config_socket(struct sockaddr_in*, short);
+void print_thread(char*);
 
 #endif

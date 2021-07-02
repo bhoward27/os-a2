@@ -1,3 +1,7 @@
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,4 +40,10 @@ int config_socket(struct sockaddr_in* sin, short port) {
     bind(socket_descriptor, (struct sockaddr*) sin, sizeof(*sin));
 
     return socket_descriptor;
+}
+
+// Getting printable thread id based off here: https://stackoverflow.com/a/32211287
+// and the code at the end of the man page for syscall.
+void print_thread(char* name) {
+    printf("Inside %s() -- Thread #%ld\n", name, syscall(SYS_gettid));
 }

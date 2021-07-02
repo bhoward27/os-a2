@@ -4,11 +4,10 @@ This file documents my attempts to solve nasty bugs.
 Bug Description:
 -It's seemingly random as to whether or not the terminals can communicate with each other. Specifically, the message is never received as recvfrom never completes.
 
-Possible Causes:
+Possible Causes: Order of thread entry may affect whether recieve thread gets blocked
 
 Attempt #1:
-What to try:
-Why I'm trying it/what possible cause am I trying to address?:
+
 
 
 ******************************
@@ -17,6 +16,7 @@ Why I'm trying it/what possible cause am I trying to address?:
 Random
 
 gdb commands:
+-gdb --args executablename arg1 arg2 arg3
 -info threads (shows what threads are running)
 -thread [n] (switch to thread n)
 -watch [variable] [condition] (after condition is met, the debugger pauses execution — keep in mind that the numbers you put in a condition are interpreted as hexadecimal)

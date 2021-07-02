@@ -1,0 +1,70 @@
+24 possible thread entry orders per process.
+24^2 possible process-thread combinations.
+
+After 7 runs, these are the results:
+SUCCESSFUL ORDERINGS
+(Note that these two are rotations of each other.)
+MR, P, MS, KR
+KR, MR, P, MS
+
+UNSUCCESSFUL ORDERTINGS
+KR, MS, MR, P
+P, MS, KR, MR
+MS, KR, MR, P
+MS, P, MR, KR
+
+
+RUN 1
+Process A
+MR, P, MS, KR
+
+Process B (could not receive)
+KR, MS, MR, P
+
+
+RUN 2
+Process A (couldn’t receive)
+P, MS, KR, MR
+
+Process B
+KR, MR, P, MS
+
+
+RUN 3
+Process A (couldn't receive)
+MS, KR, MR, P
+
+Process B
+KR, MR, P, MS
+
+
+RUN 4
+Process A (couldn't receive)
+KR, MS, MR, P
+
+Process B (couldn't receive)
+KR, MS, MR, P
+
+
+RUN 5
+Process A (couldn't receive)
+KR, MS, MR, P
+
+Process B (couldn't receive)
+MS, P, MR, KR
+
+
+RUN 6
+Process A (couldn't receive)
+MS, KR, MR, P
+
+Process B
+KR, MR, P, MS
+
+
+RUN 7
+Process A
+MR, P, MS, KR
+
+Process B
+KR, MR, P, MS

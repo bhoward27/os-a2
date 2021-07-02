@@ -20,7 +20,7 @@ void Printer_init(Message_bundle* incoming_bundle) {
 }
 
 void* Printer_thread() {
-    printf("Inside Printer_thread()\n");
+    print_thread(thread_name);
 
     pthread_mutex_t* mutex = incoming->mutex;
     pthread_cond_t* cond_var = incoming->cond_var;
