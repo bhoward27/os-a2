@@ -14,8 +14,9 @@ static Message_bundle* outgoing;
 static int socket_descriptor;
 static char* thread_name = "MessageSender_thread";
 
-void MessageSender_init(Message_bundle* outgoing_bundle) {
+void MessageSender_init(Message_bundle* outgoing_bundle, int socket) {
     printf("Inside MessageSender_init()\n");
+    socket_descriptor = socket;
     outgoing = outgoing_bundle;
     int result = pthread_create(&thread, NULL, MessageSender_thread, NULL);
     if (result) err(thread_name, "pthread_create", result);
@@ -24,8 +25,8 @@ void MessageSender_init(Message_bundle* outgoing_bundle) {
 void* MessageSender_thread() {
     print_thread(thread_name);
 
-    struct sockaddr_in sin;
-    socket_descriptor = config_socket(&sin, outgoing->local_port);
+    // struct sockaddr_in sin;
+    // socket_descriptor = config_socket(&sin, outgoing->local_port);
 
     // Set up the remote sockaddr.
     struct addrinfo* servinfo;

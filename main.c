@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <netdb.h>
 #include "list.h"
 #include "message_bundle.h"
 #include "keyboard_receiver.h"
 #include "message_sender.h"
 #include "message_receiver.h"
 #include "printer.h"
+#include "utils.h"
 
 int main(int argc, char* argv[]) {
     if (argc < 4) {
@@ -39,10 +41,13 @@ int main(int argc, char* argv[]) {
     incoming.cond_var = &incoming_cond_var;
     outgoing.mutex = &outgoing_mutex;
     outgoing.cond_var = &outgoing_cond_var;
+        
+    struct sockaddr_in sin;
+    int socket_descriptor = config_socket(&sin, incoming.local_port);
 
     KeyboardReceiver_init(&outgoing);
-    MessageSender_init(&outgoing);
-    MessageReceiver_init(&incoming);
+    MessageSender_init(&outgoing, socket_descriptor);
+    MessageReceiver_init(&incoming, socket_descriptor);
     Printer_init(&incoming);
 
     KeyboardReceiver_wait_for_shutdown();

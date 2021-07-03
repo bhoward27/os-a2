@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Werror -std=c11 -D _POSIX_C_SOURCE=200809L -Werror
+CFLAGS = -Wall -Werror -std=c11 -D _POSIX_C_SOURCE=200809L
 OFLAGS = -Wall -Werror -std=c11 -D _POSIX_C_SOURCE=200809L -g -c -Og
 
 all: s-talk

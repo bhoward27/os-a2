@@ -14,17 +14,18 @@ static Message_bundle* incoming;
 static int socket_descriptor;
 static char* thread_name = "MessageReceiver_thread";
 
-void MessageReceiver_init(Message_bundle* incoming_bundle) {
+void MessageReceiver_init(Message_bundle* incoming_bundle, int socket) {
     printf("Inside MessageReceiver_init()\n");
     incoming = incoming_bundle;
+    socket_descriptor = socket;
     int result = pthread_create(&thread, NULL, MessageReceiver_thread, NULL);
     if (result) err(thread_name, "pthread_create", result);
 }
 
 void* MessageReceiver_thread() {
     print_thread(thread_name);
-    struct sockaddr_in sin;
-    socket_descriptor = config_socket(&sin, incoming->local_port);
+    // struct sockaddr_in sin;
+    // socket_descriptor = config_socket(&sin, incoming->local_port);
 
     struct sockaddr_in sin_remote;
     unsigned int sin_len = sizeof(sin_remote);
