@@ -12,9 +12,10 @@
 
 // TODO: Delete all unneccessary files.
 // TODO: Delete all dead code.
+// TODO: Remove all superfluous print statements.
 
 int main(int argc, char* argv[]) {
-    if (argc < 4) {
+    if (argc != 4) {
         printf("s-talk requires four command-line arguments.\n"
             "The format is like so: s-talk [my port number] [remote machine name] [remote port number]\n");
         return -1;

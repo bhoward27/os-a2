@@ -4,6 +4,9 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <sys/types.h>
 #include "list.h"
 #include "message_bundle.h"
 #include "utils.h"
@@ -33,6 +36,16 @@ void* MessageReceiver_thread() {
     pthread_cond_t* cond_var = incoming->cond_var;
     List* incoming_messages = incoming->messages;
     while (*all_threads_running) {
+        fd_set rfds;
+        struct timeval tv;
+        FD_ZERO(&rfds);
+        FD_SET(socket_descriptor, &rfds);
+        tv.tv_sec = tv.tv_usec = 0;
+        int retval = select(socket_descriptor + 1, &rfds, NULL, NULL, &tv);
+
+        if (retval == -1) err(thread_name, "select", retval);
+        else if (retval == 0) continue; // No message detected, so check again.
+
         char* message = (char*) malloc(sizeof(char) * MSG_MAX_LEN);
         if (!message) {
             fprintf(stderr, "Error in MessageReceiver_thread(): char* message = malloc() failed.\n");
@@ -40,7 +53,7 @@ void* MessageReceiver_thread() {
             exit(EXIT_FAILURE);
         }
         // printf("Receiving message...\n");
-         // TODO: Use non-blocking function instead (i.e., one that times out eventually).
+
         int result = recvfrom(
             socket_descriptor,
             message,
@@ -81,6 +94,31 @@ void* MessageReceiver_thread() {
             err(thread_name, "pthread_mutex_unlock", unlock_result);
         }
     }
+
+    // Add a null pointer to incoming_messages to signal printer.
+    int result = LIST_FAIL;
+
+    int lock_result = pthread_mutex_lock(mutex);
+    {
+        if (lock_result) err(thread_name, "pthread_mutex_lock", lock_result);
+        result = List_append(incoming_messages, NULL);
+        if (result == LIST_FAIL) {
+            fprintf(
+                stderr, 
+                "Error in MessageReceiver_thread(): List_append() = LIST_FAIL.\n"
+            );
+        }
+        else {
+            int signal_result = pthread_cond_signal(cond_var);
+            if (signal_result) err(thread_name, "pthread_cond_signal", signal_result);
+        }
+    }
+    int unlock_result = pthread_mutex_unlock(mutex);
+
+    if (unlock_result) {
+        err(thread_name, "pthread_mutex_unlock", unlock_result);
+    }
+
     return NULL;
 }
 

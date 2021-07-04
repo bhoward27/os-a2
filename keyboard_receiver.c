@@ -3,6 +3,9 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <sys/types.h>
 #include "list.h"
 #include "message_bundle.h"
 #include "utils.h"
@@ -28,14 +31,24 @@ void* KeyboardReceiver_thread() {
     List* outgoing_messages = outgoing->messages;
 
     while (*all_threads_running) {
+        // printf("Awaiting input...\n");
+        fd_set rfds;
+        struct timeval tv;
+        int fd = 0;
+        FD_ZERO(&rfds);
+        FD_SET(fd, &rfds);
+        tv.tv_sec = tv.tv_usec = 0;
+        int retval = select(fd + 1, &rfds, NULL, NULL, &tv);
+
+        if (retval == -1) err(thread_name, "select", retval);
+        else if (retval == 0) continue; // No input detected, so check again.
+        
         char* message = (char*) malloc(sizeof(char) * MSG_MAX_LEN);
         if (!message) {
             fprintf(stderr, "Error in KeyboardReceiver_thread(): char* message = malloc() failed.\n");
             perror("malloc");
             exit(EXIT_FAILURE);
         }
-        // printf("Awaiting input...\n");
-        // TODO: Use non-blocking I/O, like select or epoll, instead of fgets.
         char* succeeded = fgets(message, MSG_MAX_LEN, stdin);
         if (succeeded) {
             int result = LIST_FAIL;
@@ -70,6 +83,44 @@ void* KeyboardReceiver_thread() {
             free(message);
         }
     }
+    
+    // Add a null string to the list for the sake of signalling MessageSender.
+    // Except gcc gives me warnings for "" so I'll settle for "\n"
+    // Either way this is hacky way of doing things as it causes an extra message to be sent.
+    // TODO: Improve.
+    // char* message = (char*) malloc(sizeof(char) * MSG_MAX_LEN);
+    // if (!message) {
+    //     fprintf(stderr, "Error in KeyboardReceiver_thread(): char* message = malloc() failed.\n");
+    //     perror("malloc");
+    //     exit(EXIT_FAILURE);
+    // }
+    // snprintf(message, MSG_MAX_LEN, "\n");
+    
+    int result = LIST_FAIL;
+
+    // printf("Approaching KeyboardReceiver's critical section...\n");
+    int lock_result = pthread_mutex_lock(mutex);
+    {
+        // printf("In KeyboardReceiver's critical section\n");
+        if (lock_result) err(thread_name, "pthread_mutex_lock", lock_result);
+        result = List_append(outgoing_messages, NULL);
+        if (result == LIST_FAIL) {
+            fprintf(
+                stderr, 
+                "Error in KeyboardReceiver_thread(): List_append() = LIST_FAIL.\n"
+            );
+        }
+        else {
+            int signal_result = pthread_cond_signal(cond_var);
+            if (signal_result) err(thread_name, "pthread_cond_signal", signal_result);
+        }
+    }
+    int unlock_result = pthread_mutex_unlock(mutex);
+    // printf("Exited KeyboardReceiver's critical section\n");
+    if (unlock_result) {
+        err(thread_name, "pthread_mutex_unlock", unlock_result);
+    }
+
     return NULL;
 }
 

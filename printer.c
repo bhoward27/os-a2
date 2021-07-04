@@ -51,9 +51,13 @@ void* Printer_thread() {
             err(thread_name, "pthread_mutex_unlock", unlock_result);
         }
 
+        // Can't distinguish between having a null pointer put on the list, and simply
+        // having List_remove fail, for whatever reason. So, if List_remove fails, the program
+        // will fail.
+        // TODO: Improve.
         if (!message) {
-            printf("message is null.\n");
-            continue; // No message to print, so check again.
+            *all_threads_running = 0;
+            return NULL;
         }
 
         // TODO: Make the output look a bit nicer --- remove excessive newlines.

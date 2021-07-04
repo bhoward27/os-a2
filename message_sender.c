@@ -50,8 +50,10 @@ void* MessageSender_thread() {
             if (lock_result) {
                 err(thread_name, "pthread_mutex_lock", lock_result);
             }
+            printf("Waiting in MessageSender...\n");
             int wait_result = pthread_cond_wait(cond_var, mutex);
             if (wait_result) err(thread_name, "pthread_cond_wait", wait_result);
+            printf("Done waiting in MessageSender.\n");
             void* first = List_first(outgoing_messages);
             if (first) message = List_remove(outgoing_messages);
         }
@@ -61,20 +63,28 @@ void* MessageSender_thread() {
             err(thread_name, "pthread_mutex_unlock", unlock_result);
         }
         
-        if (!message) continue; // No message so check again.
+        // Can't distinguish between having a null pointer put on the list, and simply
+        // having List_remove fail, for whatever reason. So, if List_remove fails, the program
+        // will fail.
+        // TODO: Improve.
+        if (!message) {
+            *all_threads_running = 0;
+            return NULL;
+        }
 
+        printf("Sending...\n");
         int result = sendto(
             socket_descriptor, 
             message, 
             MSG_MAX_LEN, 
-            0, 
+            0,
             sin_remote,
             sin_len
         );
-        // printf("Message sent.\n");
         if (result == -1) {
             err(thread_name, "sendto", result);
         }
+        printf("Message sent.\n");
         
         char* msg = (char*) message;
         if (strncmp("!\n", msg, 3) == 0) *all_threads_running = 0;
