@@ -11,21 +11,20 @@
 
 static pthread_t thread;
 static Message_bundle* incoming;
-static int socket_descriptor;
 static char* thread_name = "MessageReceiver_thread";
+static int * all_threads_running = NULL;
 
-void MessageReceiver_init(Message_bundle* incoming_bundle, int socket) {
+void MessageReceiver_init(Message_bundle* incoming_bundle, int* thread_state) {
     printf("Inside MessageReceiver_init()\n");
     incoming = incoming_bundle;
-    socket_descriptor = socket;
+    all_threads_running = thread_state;
     int result = pthread_create(&thread, NULL, MessageReceiver_thread, NULL);
     if (result) err(thread_name, "pthread_create", result);
 }
 
 void* MessageReceiver_thread() {
-    print_thread(thread_name);
-    // struct sockaddr_in sin;
-    // socket_descriptor = config_socket(&sin, incoming->local_port);
+    // print_thread(thread_name);
+    int socket_descriptor = incoming->socket;
 
     struct sockaddr_in sin_remote;
     unsigned int sin_len = sizeof(sin_remote);
@@ -33,9 +32,15 @@ void* MessageReceiver_thread() {
     pthread_mutex_t* mutex = incoming->mutex;
     pthread_cond_t* cond_var = incoming->cond_var;
     List* incoming_messages = incoming->messages;
-    while (1) {
-        char message[MSG_MAX_LEN];
-        printf("Receiving message...\n");
+    while (*all_threads_running) {
+        char* message = (char*) malloc(sizeof(char) * MSG_MAX_LEN);
+        if (!message) {
+            fprintf(stderr, "Error in MessageReceiver_thread(): char* message = malloc() failed.\n");
+            perror("malloc");
+            exit(EXIT_FAILURE);
+        }
+        // printf("Receiving message...\n");
+         // TODO: Use non-blocking function instead (i.e., one that times out eventually).
         int result = recvfrom(
             socket_descriptor,
             message,
@@ -44,13 +49,13 @@ void* MessageReceiver_thread() {
             (struct sockaddr*) &sin_remote,
             &sin_len
         );
-        printf("Message received.\n");
+        // printf("Message received.\n");
         if (result == -1) {
             err(thread_name, "recvfrom", result);
         }
 
         int res = LIST_FAIL;
-        printf("Approaching MessageReceiver's critical section...\n");
+        // printf("Approaching MessageReceiver's critical section...\n");
         int lock_result = pthread_mutex_lock(mutex);
         {
             // printf("In MessageReceiver's critical section\n");
@@ -61,12 +66,13 @@ void* MessageReceiver_thread() {
             res = List_append(incoming_messages, (void*) message);
             if (res == LIST_FAIL) {
                 fprintf(stderr, "Error in MessageReceiver_thread(): List_append() = LIST_FAIL.\n");
+                free(message);
             }
             else {
-                printf("Trying to signal Printer...\n");
+                // printf("Trying to signal Printer...\n");
                 int signal_result = pthread_cond_signal(cond_var);
                 if (signal_result) err(thread_name, "pthread_cond_signal", signal_result);
-                printf("Signalled Printer.\n");
+                // printf("Signalled Printer.\n");
             }
         }
         int unlock_result = pthread_mutex_unlock(mutex);

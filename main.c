@@ -10,6 +10,9 @@
 #include "printer.h"
 #include "utils.h"
 
+// TODO: Delete all unneccessary files.
+// TODO: Delete all dead code.
+
 int main(int argc, char* argv[]) {
     if (argc < 4) {
         printf("s-talk requires four command-line arguments.\n"
@@ -43,17 +46,27 @@ int main(int argc, char* argv[]) {
     outgoing.cond_var = &outgoing_cond_var;
         
     struct sockaddr_in sin;
-    int socket_descriptor = config_socket(&sin, incoming.local_port);
+    incoming.socket = outgoing.socket = config_socket(&sin, incoming.local_port);
 
-    KeyboardReceiver_init(&outgoing);
-    MessageSender_init(&outgoing, socket_descriptor);
-    MessageReceiver_init(&incoming, socket_descriptor);
-    Printer_init(&incoming);
+    int thread_state = 1; // 1 means all threads are running. 0 means at least one thread has finished.
+
+    KeyboardReceiver_init(&outgoing, &thread_state);
+    MessageSender_init(&outgoing, &thread_state);
+    MessageReceiver_init(&incoming, &thread_state);
+    Printer_init(&incoming, &thread_state);
 
     KeyboardReceiver_wait_for_shutdown();
     MessageSender_wait_for_shutdown();
     MessageReceiver_wait_for_shutdown();
     Printer_wait_for_shutdown();
-    printf("Inside main -- Done.\n");
+
+    /*
+        TODO:
+            -Destroy mutexes
+            -Destroy condition variables
+            -Free queued messages with free()
+            -Free lists
+    */
+    
     return 0;
 }

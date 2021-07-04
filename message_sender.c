@@ -11,22 +11,21 @@
 
 static pthread_t thread;
 static Message_bundle* outgoing;
-static int socket_descriptor;
 static char* thread_name = "MessageSender_thread";
+static int * all_threads_running = NULL;
 
-void MessageSender_init(Message_bundle* outgoing_bundle, int socket) {
+void MessageSender_init(Message_bundle* outgoing_bundle, int* thread_state) {
     printf("Inside MessageSender_init()\n");
-    socket_descriptor = socket;
     outgoing = outgoing_bundle;
+    all_threads_running = thread_state;
     int result = pthread_create(&thread, NULL, MessageSender_thread, NULL);
     if (result) err(thread_name, "pthread_create", result);
 }
 
 void* MessageSender_thread() {
-    print_thread(thread_name);
+    // print_thread(thread_name);
 
-    // struct sockaddr_in sin;
-    // socket_descriptor = config_socket(&sin, outgoing->local_port);
+    int socket_descriptor = outgoing->socket;
 
     // Set up the remote sockaddr.
     struct addrinfo* servinfo;
@@ -36,19 +35,18 @@ void* MessageSender_thread() {
     hints.ai_socktype = SOCK_DGRAM;
     getaddrinfo(outgoing->remote_name, outgoing->remote_port, &hints, &servinfo);
     struct sockaddr* sin_remote = servinfo->ai_addr;
-    unsigned int sin_len = sizeof(*sin_remote); // Apparently I need sin_len BEFORE calling getaddrinfo... Not sure how to do that.
+    unsigned int sin_len = sizeof(*sin_remote);
 
     pthread_mutex_t* mutex = outgoing->mutex;
     pthread_cond_t* cond_var = outgoing->cond_var;
     List* outgoing_messages = outgoing->messages;
-    while (1) {
+    while (*all_threads_running) {
         void* message = NULL;
         // Get the message to be sent.
         // printf("Approaching MessageSender's critical section...\n");
         int lock_result = pthread_mutex_lock(mutex);
         {
             // printf("In MessageSender's critical section\n");
-            // sleep_msec(10);
             if (lock_result) {
                 err(thread_name, "pthread_mutex_lock", lock_result);
             }
@@ -73,17 +71,20 @@ void* MessageSender_thread() {
             sin_remote,
             sin_len
         );
-        printf("Message sent.\n");
+        // printf("Message sent.\n");
         if (result == -1) {
             err(thread_name, "sendto", result);
         }
+        
+        char* msg = (char*) message;
+        if (strncmp("!\n", msg, 3) == 0) *all_threads_running = 0;
+        free(msg);
     }
     return NULL;
 }
 
 void MessageSender_wait_for_shutdown() {
     printf("Inside MessageSender_wait_for_shutdown()\n");
-    // TODO: Maybe I need a pthread_cancel here? In that case, just call it shutdown (not wait)?
 
     int result = pthread_join(thread, NULL);
     if (result) err(thread_name, "pthread_join", result);

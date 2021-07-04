@@ -12,6 +12,7 @@ typedef struct {
     char* local_name;
     char* remote_port;
     char* remote_name;
+    int socket;
 
     // These variables regulate access to messages.
     pthread_mutex_t* mutex;
