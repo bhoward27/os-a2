@@ -34,7 +34,7 @@ printer.o: printer.c printer.h list.h message_bundle.h utils.h
 	gcc $(OFLAGS) printer.c
 
 utils.o: utils.c utils.h
-	gcc $(OFLAGS) utils.c
+	gcc $(OFLAGS) utils.cx
 
 clean:
 	rm -f *.o *.s *.out s-talk

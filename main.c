@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <netdb.h>
+#include <unistd.h>
 #include "list.h"
 #include "message_bundle.h"
 #include "keyboard_receiver.h"
@@ -13,6 +14,8 @@
 // TODO: Delete all unneccessary files.
 // TODO: Delete all dead code.
 // TODO: Remove all superfluous print statements.
+
+void free_msg(void*);
 
 int main(int argc, char* argv[]) {
     if (argc != 4) {
@@ -61,13 +64,24 @@ int main(int argc, char* argv[]) {
     MessageReceiver_wait_for_shutdown();
     Printer_wait_for_shutdown();
 
+    close(incoming.socket);
+
     /*
         TODO:
-            -Destroy mutexes
-            -Destroy condition variables
             -Free queued messages with free()
             -Free lists
     */
-    
-    return 0;
+   pthread_mutex_destroy(&incoming_mutex);
+   pthread_cond_destroy(&incoming_cond_var);
+   pthread_mutex_destroy(&outgoing_mutex);
+   pthread_cond_destroy(&outgoing_cond_var);
+   
+   List_free(incoming.messages, free_msg);
+   List_free(outgoing.messages, free_msg);
+   
+   return 0;
+}
+
+void free_msg(void* msg) {
+    if (msg) free(msg);
 }

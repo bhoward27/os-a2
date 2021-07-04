@@ -69,6 +69,7 @@ void* MessageSender_thread() {
         // TODO: Improve.
         if (!message) {
             *all_threads_running = 0;
+            freeaddrinfo(servinfo);
             return NULL;
         }
 
@@ -76,7 +77,7 @@ void* MessageSender_thread() {
         int result = sendto(
             socket_descriptor, 
             message, 
-            MSG_MAX_LEN, 
+            strlen((char*) message), 
             0,
             sin_remote,
             sin_len
@@ -90,6 +91,7 @@ void* MessageSender_thread() {
         if (strncmp("!\n", msg, 3) == 0) *all_threads_running = 0;
         free(msg);
     }
+    freeaddrinfo(servinfo);
     return NULL;
 }
 
