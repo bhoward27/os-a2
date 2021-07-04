@@ -11,10 +11,6 @@
 #include "printer.h"
 #include "utils.h"
 
-// TODO: Delete all unneccessary files.
-// TODO: Delete all dead code.
-// TODO: Remove all superfluous print statements.
-
 void free_msg(void*);
 
 int main(int argc, char* argv[]) {

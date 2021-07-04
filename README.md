@@ -1,2 +1,3 @@
-<!-- TODO: Describe the application.-->
 Much of the code for this assignment is inspired by or directly copied from Brian Fraser's videos on sockets, threads, and condition variables.
+
+Something I failed to implement was checking for some edge cases. For example, if one of the List function fails and returns a null pointer, my program might not know the difference between that and a deliberate null message that is meant to end the program.
