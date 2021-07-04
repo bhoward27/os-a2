@@ -32,13 +32,10 @@ int main(int argc, char* argv[]) {
         printf("List_create() failed. Exiting program...\n");
         return -1;
     }
-    // TODO: Verify CLI conforms to the format and is reasonable (Do I NEED to verify it?)
-    // Expected CLI format:
-    //      s-talk [my port number] [remote machine name] [remote port number]
+
     incoming.local_port = outgoing.local_port = (short) atoi(argv[1]);
     incoming.remote_name = outgoing.remote_name = argv[2];
     incoming.remote_port = outgoing.remote_port = argv[3];
-    // TODO: Get local machine name. Not strictly necessary, but would be nice.
 
     pthread_mutex_t incoming_mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t incoming_cond_var = PTHREAD_COND_INITIALIZER;
@@ -66,20 +63,15 @@ int main(int argc, char* argv[]) {
 
     close(incoming.socket);
 
-    /*
-        TODO:
-            -Free queued messages with free()
-            -Free lists
-    */
-   pthread_mutex_destroy(&incoming_mutex);
-   pthread_cond_destroy(&incoming_cond_var);
-   pthread_mutex_destroy(&outgoing_mutex);
-   pthread_cond_destroy(&outgoing_cond_var);
-   
-   List_free(incoming.messages, free_msg);
-   List_free(outgoing.messages, free_msg);
-   
-   return 0;
+    pthread_mutex_destroy(&incoming_mutex);
+    pthread_cond_destroy(&incoming_cond_var);
+    pthread_mutex_destroy(&outgoing_mutex);
+    pthread_cond_destroy(&outgoing_cond_var);
+
+    List_free(incoming.messages, free_msg);
+    List_free(outgoing.messages, free_msg);
+
+    return 0;
 }
 
 void free_msg(void* msg) {
